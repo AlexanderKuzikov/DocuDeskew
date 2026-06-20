@@ -281,8 +281,17 @@ function morphology(input: Uint8Array, width: number, height: number, iterations
           || current[i + width - 1] === 1
           || current[i + width] === 1
           || current[i + width + 1] === 1;
+        const allOnes = current[i - width - 1] === 1
+          && current[i - width] === 1
+          && current[i - width + 1] === 1
+          && current[i - 1] === 1
+          && current[i] === 1
+          && current[i + 1] === 1
+          && current[i + width - 1] === 1
+          && current[i + width] === 1
+          && current[i + width + 1] === 1;
 
-        output[i] = operation === 'dilate' ? (hasOne ? 1 : 0) : (hasOne ? 0 : 1);
+        output[i] = operation === 'dilate' ? (hasOne ? 1 : 0) : (allOnes ? 1 : 0);
       }
     }
 
@@ -450,7 +459,7 @@ function calculateConfidence(input: {
     ? clamp(1 - input.bestArea / input.secondBestArea, 0, 1)
     : 1;
 
-  return clamp(0.25 + 0.45 * edgeScore + 0.2 * angleScore + 0.1 * pointScore, 0, 1);
+  return clamp(0.3 + 0.45 * edgeScore + 0.15 * angleScore + 0.1 * pointScore, 0, 1);
 }
 
 function detectOrientation(width: number, height: number): DeskewOkResult['orientation'] {

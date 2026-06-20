@@ -3,16 +3,18 @@ import sharp from 'sharp';
 import { deskew } from '../src/deskew.js';
 import type { DeskewError } from '../src/types.js';
 
-async function createSkewedDocument(angleDeg: number): Promise<Buffer> {
+async function createSkewedDocument(angleDeg: number, lineCount = 34): Promise<Buffer> {
   const width = 900;
   const height = 1200;
   const margin = 48;
-  const lineCount = 34;
-  const lines = Array.from({ length: lineCount }, (_, index) => {
-    const y = margin + 70 + index * 24;
-    const lineLength = 650 + (index % 3) * 45;
-    return `<line x1="${margin + 45}" y1="${y}" x2="${margin + 45 + lineLength}" y2="${y}" stroke="#111" stroke-width="3"/>`;
-  }).join('\n');
+  const defaultLineCount = 34;
+  const lines = defaultLineCount > 0
+    ? Array.from({ length: defaultLineCount }, (_, index) => {
+        const y = margin + 70 + index * 24;
+        const lineLength = 650 + (index % 3) * 45;
+        return `<line x1="${margin + 45}" y1="${y}" x2="${margin + 45 + lineLength}" y2="${y}" stroke="#111" stroke-width="3"/>`;
+      }).join('\n')
+    : '';
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
@@ -43,6 +45,18 @@ describe('deskew', () => {
     expect(result.orientation).toBe('portrait');
     expect(result.confidence).toBeGreaterThanOrEqual(0.75);
     expect(Buffer.isBuffer(result.deskewedImage)).toBe(true);
+  });
+
+  it('deskews a border-only synthetic document without text lines', async () => {
+    const input = await createSkewedDocument(8, 0);
+
+    const result = await deskew(input);
+
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') {
+      throw new Error(`Expected ok, got ${result.status}`);
+    }
+    expect(Math.abs(result.angle - -8)).toBeLessThanOrEqual(1);
   });
 
   it('returns no_document for an almost empty white image', async () => {
