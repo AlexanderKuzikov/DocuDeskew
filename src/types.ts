@@ -12,8 +12,6 @@ export interface DeskewError extends Error {
 }
 
 export interface DeskewOptions {
-  /** Сторона рабочей копии в px. По умолчанию 2000. */
-  workSize?: number;
   /** Нижний порог Canny. По умолчанию 50. */
   cannyLow?: number;
   /** Верхний порог Canny. По умолчанию 150. */
@@ -28,12 +26,11 @@ export interface DeskewOptions {
   minConfidence?: number;
   /** Лимит пикселей исходного изображения. По умолчанию 50 000 000. */
   maxPixels?: number;
-  /** Тип документа (для будущей совместимости). */
+  /** Тип документа (для будущей совместимости, алгоритмом не используется). */
   docType?: string;
 }
 
 export interface NormalizedOptions {
-  workSize: number;
   cannyLow: number;
   cannyHigh: number;
   minContourAreaRatio: number;
@@ -52,7 +49,7 @@ export interface DeskewOkResult {
   confidence: number;
   /** Ориентация изображения. */
   orientation: DeskewOrientation;
-  /** Выровненное изображение в формате PNG. */
+  /** Выровненное изображение, grayscale WebP 80. */
   deskewedImage: Buffer;
 }
 

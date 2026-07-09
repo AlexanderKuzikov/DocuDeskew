@@ -13,13 +13,13 @@
 
 ## Что делает
 
-`DocuDeskew` принимает `Buffer` с PNG/JPEG-изображением страницы, находит контур документа, вычисляет корректирующий угол и возвращает выровненный grayscale PNG.
+`DocuDeskew` принимает `Buffer` с уже подготовленным изображением (grayscale, ≤1536px по большей стороне) и возвращает выровненный grayscale WebP 80.
 
 Диапазон углов: **–45°…+45°**. Повороты с шагом 90° — следующий модуль `DocuOrient`.
 
-`angle` — корректирующий угол для поворота (положительный = по часовой). Если документ был повёрнут на +10°, API вернёт примерно –10°.
-
-Не изменяет читаемую ориентацию верх/низ.
+**Контракт модуля:**
+- Вход: grayscale WebP/PNG/JPEG, уже уменьшенный до VLM-окна (≤1536px). Ресайз и grayscale-конвертация — ответственность upstream.
+- Выход: grayscale WebP 80, тот же размер минус trim-обрезка.
 
 ## Стек
 
@@ -113,7 +113,6 @@ const result = await deskew(imageBuffer, options?);
 
 | Параметр | Тип | По умолчанию | Описание |
 |----------|-----|--------------|----------|
-| `workSize` | `number` | `2000` | Сторона рабочей копии, px |
 | `cannyLow` | `number` | `50` | Нижний порог Canny |
 | `cannyHigh` | `number` | `150` | Верхний порог Canny |
 | `minContourAreaRatio` | `number` | `0.05` | Минимальная доля площади контура от изображения |
@@ -137,19 +136,19 @@ API бросает `Error` с полем `code`:
 
 ## Алгоритм
 
-1. Валидация входа: Buffer, формат PNG/JPEG, ≤ maxPixels.
-2. Рабочая копия: `sharp.resize(workSize)` — 2000px по большей стороне.
-3. OpenCV на рабочей копии:
-   - `cvtColor(RGB2GRAY)`
-   - `GaussianBlur(5×5)`
-   - `Canny(low=50, high=150)`
-   - `findContours` → самый большой контур >5% площади
-   - `minAreaRect` → угол поворота
-4. Если контур не найден → `no_document`.
-5. Если контур мал или угол нестабилен → `low_confidence`.
-6. Поворот оригинала через `sharp.rotate(angle)`.
-7. Обрезка белого фона + padding.
-8. Возврат grayscale PNG-буфера и метаданных.
+1. Валидация входа: Buffer, формат PNG/JPEG/WebP, ≤ maxPixels.
+2. Чтение grayscale raw через `sharp.raw()` → `cv.Mat` (без копирования).
+3. `GaussianBlur(5×5)`.
+4. `Canny(low=50, high=150)`.
+5. `findContours` → самый большой контур >5% площади.
+6. `minAreaRect` → угол поворота.
+7. Если контур не найден → `no_document`.
+8. Если confidence < порога → `low_confidence`.
+9. Поворот через `sharp.rotate(angle)` на исходном буфере.
+10. `trim` + `padding`.
+11. Возврат grayscale WebP 80.
+
+**Важно:** ресайз и grayscale-конвертация выполняются upstream-модулем, НЕ внутри DocuDeskew.
 
 ## Пример использования
 
@@ -181,8 +180,8 @@ npm run build
 
 ## Ограничения
 
-- Вход: только PNG/JPEG.
-- Выход: grayscale PNG.
+- Вход: PNG/JPEG/WebP, уже grayscale и ≤1536px по большей стороне.
+- Выход: grayscale WebP 80.
 - Документ на белом фоне.
 - Угол: –45°…+45°.
 - Нет CLI.

@@ -34,8 +34,15 @@ DocuDeskew — один из модулей конвейера DocuMind. Арх�
 - Диапазон углов: –45°…+45°. Повороты с шагом 90° → следующий модуль DocuOrient.
 
 **Контракт модуля:**
-- Вход: `Buffer` (PNG/JPEG) + `DocuDeskewOptions` (опционально `docType` для будущей совместимости).
-- Выход: `DeskewResult` — см. «API contract».
+- Вход: grayscale WebP/PNG/JPEG, уже уменьшенный upstream до VLM-окна (≤1536px по большей стороне).
+- Выход: grayscale WebP 80, тот же размер минус trim-обрезка.
+- Модуль НЕ делает ресайз и НЕ конвертирует в grayscale — это ответственность upstream.
+- `docType` опционально для будущей совместимости; алгоритмом не используется.
+
+**Почему WebP 80:**
+- ~180 KB на страницу A4 1536px (vs PNG ~2.3 MB, JPEG 90 ~280 KB).
+- Экономия ~30% токенов на VLM-прогонах.
+- Промежуточный формат между модулями; финальный сборщик PDF конвертирует в JPEG 80.
 
 Обработка реальных юридических документов с персональными данными должна выполняться локально/on-prem. Не отправлять такие изображения во внешние LLM/облачные сервисы.
 
@@ -46,21 +53,22 @@ DocuDeskew — один из модулей конвейера DocuMind. Арх�
 Активный пайплайн (OpenCV + sharp):
 
 ```text
-imageBuffer (оригинал)
-  → валидация: Buffer, формат PNG/JPEG, maxPixels
-  → рабочая копия: sharp.resize(~2000px по большей стороне), RGB → Buffer
-  → OpenCV на рабочей копии:
-       cvtColor(COLOR_RGB2GRAY)
-     → GaussianBlur(5×5)
-     → Canny(low, high)
-     → findContours(RETR_EXTERNAL)
-     → фильтр: самый большой контур площадью >5% изображения
-     → minAreaRect → угол поворота
+imageBuffer (grayscale WebP/PNG/JPEG, уже ≤1536px по большей стороне)
+  → валидация: Buffer, формат, maxPixels
+  → sharp.raw() → Buffer uint8 → cv.Mat (без копирования)
+  → GaussianBlur(5×5)                    // вход уже grayscale — cvtColor не нужен
+  → Canny(low, high)
+  → findContours(RETR_EXTERNAL)
+  → фильтр: самый большой контур >5% изображения
+  → minAreaRect → угол
   → если контур не найден → no_document
-  → если контур мал / угол нестабилен → low_confidence
-  → поворот ОРИГИНАЛА: sharp.rotate(angle) + trim + padding
-  → DeskewResult { status, angle, confidence, orientation, deskewedImage }
+  → если confidence < порога → low_confidence
+  → sharp.rotate(angle) на исходном буфере
+  → trim + padding
+  → DeskewResult { status, angle, confidence, orientation, deskewedImage (WebP 80) }
 ```
+
+Ресайз и grayscale-конвертация НЕ выполняются — ответственность upstream-модуля.
 
 Публичный API:
 
@@ -172,24 +180,22 @@ Error & {
 
 ```ts
 const DEFAULT_OPTIONS = {
-  workSize: 2000,         // сторона рабочей копии, px
-  cannyLow: 50,           // нижний порог Canny
-  cannyHigh: 150,         // верхний порог Canny
-  minContourAreaRatio: 0.05, // минимальная доля площади контура от изображения
-  padding: 10,            // отступ после trim, px
-  trimThreshold: 10,      // порог trim
-  minConfidence: 0.75,    // минимальная уверенность для статуса 'ok'
-  maxPixels: 50_000_000,  // лимит пикселей исходного изображения
+  cannyLow: 50,              // нижний порог Canny
+  cannyHigh: 150,            // верхний порог Canny
+  minContourAreaRatio: 0.05, // минимальная доля площади контура
+  padding: 10,               // отступ после trim, px
+  trimThreshold: 10,         // порог обрезки фона
+  minConfidence: 0.75,       // минимальная уверенность для 'ok'
+  maxPixels: 50_000_000,     // лимит пикселей
 };
 ```
 
----
+Входное изображение должно быть уже уменьшено upstream до VLM-окна (≤1536px по большей стороне) и сконвертировано в grayscale.
 
 ## Опции DeskewOptions
 
 | Параметр | Тип | По умолчанию | Описание |
 |----------|-----|-------------|----------|
-| `workSize` | `number` | `2000` | Сторона рабочей копии в px |
 | `cannyLow` | `number` | `50` | Нижний порог Canny |
 | `cannyHigh` | `number` | `150` | Верхний порог Canny |
 | `minContourAreaRatio` | `number` | `0.05` | Минимальная доля площади контура |
@@ -199,12 +205,11 @@ const DEFAULT_OPTIONS = {
 | `maxPixels` | `number` | `50000000` | Лимит пикселей |
 | `docType` | `string` | — | Тип документа (для будущей совместимости) |
 
----
-
 ## Ограничения
 
-- Поддерживаются только PNG/JPEG на входе.
-- Выход — grayscale PNG.
+- Поддерживаются только PNG/JPEG/WebP на входе.
+- Выход — grayscale WebP 80.
+- Вход должен быть уже grayscale и ≤1536px по большей стороне.
 - Алгоритм рассчитан на документ на белом фоне.
 - Угол ограничен диапазоном –45°…+45°.
 - Нет CLI.

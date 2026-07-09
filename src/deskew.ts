@@ -10,7 +10,6 @@ import type {
 import { estimateAngle } from './pipeline.js';
 
 const DEFAULT_OPTIONS: NormalizedOptions = {
-  workSize: 2000,
   cannyLow: 50,
   cannyHigh: 150,
   minContourAreaRatio: 0.05,
@@ -23,7 +22,11 @@ const DEFAULT_OPTIONS: NormalizedOptions = {
 /**
  * Исправляет перекос документа на изображении.
  *
- * @param imageBuffer - PNG или JPEG изображение
+ * Контракт модуля:
+ * - Вход: grayscale WebP/PNG/JPEG, уже уменьшенный upstream до VLM-окна (≤1536px).
+ * - Выход: grayscale WebP 80, тот же размер минус trim-обрезка.
+ *
+ * @param imageBuffer - WebP/PNG/JPEG изображение (уже grayscale, уже уменьшенное)
  * @param options - опциональные параметры алгоритма
  * @returns DeskewResult
  */
@@ -31,21 +34,16 @@ export async function deskew(imageBuffer: Buffer, options: DeskewOptions = {}): 
   try {
     const opts = normalizeOptions(options);
 
-    // --- Валидация и чтение оригинала ---
+    // --- Валидация ---
     const metadata = await validateAndGetMetadata(imageBuffer, opts);
-    const originalBuffer = imageBuffer;
+    const width = metadata.width!;
+    const height = metadata.height!;
 
-    // --- Создание рабочей копии ---
-    const workBuffer = await createWorkCopy(originalBuffer, metadata.width, metadata.height, opts);
-    const workMetadata = await sharp(workBuffer).metadata();
-    const workWidth = workMetadata.width!;
-    const workHeight = workMetadata.height!;
-
-    // Читаем рабочую копию как grayscale raw
-    const raw = await sharp(workBuffer).grayscale().raw().toBuffer();
+    // Читаем grayscale raw для OpenCV
+    const raw = await sharp(imageBuffer).grayscale().raw().toBuffer();
 
     // --- OpenCV: оценка угла ---
-    const estimate = await estimateAngle(raw, workWidth, workHeight, opts);
+    const estimate = await estimateAngle(raw, width, height, opts);
 
     if (estimate.confidence <= 0) {
       return {
@@ -60,10 +58,10 @@ export async function deskew(imageBuffer: Buffer, options: DeskewOptions = {}): 
 
     const { angle, confidence, orientation } = estimate;
 
-    // --- Поворот оригинала + trim + padding ---
+    // --- Поворот + trim + padding ---
     let deskewedImage: Buffer;
     try {
-      deskewedImage = await rotateTrimAndPad(originalBuffer, angle, opts);
+      deskewedImage = await rotateTrimAndPad(imageBuffer, angle, opts);
     } catch {
       throw createDeskewError('PROCESSING_ERROR', 'failed to rotate or trim the image');
     }
@@ -108,7 +106,6 @@ function normalizeOptions(options: DeskewOptions): NormalizedOptions {
     ...options,
   };
 
-  validateInteger(merged.workSize, 'workSize', 100, 10_000);
   validateInteger(merged.cannyLow, 'cannyLow', 0, 255);
   validateInteger(merged.cannyHigh, 'cannyHigh', merged.cannyLow, 255);
   validateNumber(merged.minContourAreaRatio, 'minContourAreaRatio', 0.001, 1);
@@ -142,11 +139,13 @@ async function validateAndGetMetadata(imageBuffer: Buffer, options: NormalizedOp
   try {
     metadata = await sharp(imageBuffer, { failOn: 'none' }).metadata();
   } catch {
-    throw createDeskewError('INVALID_IMAGE', 'imageBuffer is not a readable PNG/JPEG image');
+    throw createDeskewError('INVALID_IMAGE', 'imageBuffer is not a readable image');
   }
 
-  if (metadata.format !== 'png' && metadata.format !== 'jpeg') {
-    throw createDeskewError('INVALID_IMAGE', `unsupported format: ${metadata.format ?? 'unknown'}`);
+  // Принимаем PNG, JPEG, WebP
+  const format = metadata.format;
+  if (format !== 'png' && format !== 'jpeg' && format !== 'webp') {
+    throw createDeskewError('INVALID_IMAGE', `unsupported format: ${format ?? 'unknown'}`);
   }
 
   const width = metadata.width ?? 0;
@@ -163,31 +162,10 @@ async function validateAndGetMetadata(imageBuffer: Buffer, options: NormalizedOp
   return metadata;
 }
 
-async function createWorkCopy(
-  buffer: Buffer,
-  origWidth: number,
-  origHeight: number,
-  options: NormalizedOptions,
-): Promise<Buffer> {
-  const maxSide = Math.max(origWidth, origHeight);
-  if (maxSide <= options.workSize) {
-    return buffer;
-  }
-
-  const scale = options.workSize / maxSide;
-  const newWidth = Math.max(1, Math.round(origWidth * scale));
-  const newHeight = Math.max(1, Math.round(origHeight * scale));
-
-  return sharp(buffer)
-    .resize(newWidth, newHeight, { fit: 'fill' })
-    .png()
-    .toBuffer();
-}
-
 async function rotateTrimAndPad(buffer: Buffer, angle: number, options: NormalizedOptions): Promise<Buffer> {
   const rotated = await sharp(buffer)
     .rotate(angle, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
-    .png()
+    .webp({ quality: 80 })
     .toBuffer();
 
   return sharp(rotated)
@@ -200,7 +178,7 @@ async function rotateTrimAndPad(buffer: Buffer, angle: number, options: Normaliz
       background: { r: 255, g: 255, b: 255, alpha: 1 },
     })
     .grayscale()
-    .png()
+    .webp({ quality: 80 })
     .toBuffer();
 }
 

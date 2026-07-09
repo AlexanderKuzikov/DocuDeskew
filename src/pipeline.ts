@@ -8,8 +8,10 @@ export interface AngleEstimate {
 }
 
 /**
- * Запускает OpenCV-пайплайн на рабочей копии изображения:
- *   grayscale raw → GaussianBlur → Canny → findContours → minAreaRect → угол.
+ * Запускает OpenCV-пайплайн на grayscale raw-буфере:
+ *   GaussianBlur → Canny → findContours → minAreaRect → угол.
+ *
+ * Вход уже grayscale (8-бит, 1 канал) — cvtColor не требуется.
  *
  * @param raw - буфер с 8-битными grayscale пикселями
  * @param width - ширина изображения

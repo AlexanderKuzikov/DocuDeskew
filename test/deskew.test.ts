@@ -95,7 +95,7 @@ describe('deskew', () => {
     const input = await createSkewedDocument(0);
 
     await expect(deskew(input, { cannyLow: -1 })).rejects.toMatchObject({ code: 'INVALID_OPTIONS' });
-    await expect(deskew(input, { workSize: 50 })).rejects.toMatchObject({ code: 'INVALID_OPTIONS' });
+    await expect(deskew(input, { minContourAreaRatio: 0 })).rejects.toMatchObject({ code: 'INVALID_OPTIONS' });
   });
 
   it('throws IMAGE_TOO_LARGE when maxPixels is exceeded', async () => {
