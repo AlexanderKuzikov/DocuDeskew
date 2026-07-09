@@ -1,7 +1,7 @@
 # DocuDeskew
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-green?logo=node.js)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-24_LTS-green?logo=node.js)](https://nodejs.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-5.0-red?logo=opencv)](https://opencv.org/)
 [![Sharp](https://img.shields.io/badge/Sharp-0.35-99cc33?logo=sharp)](https://sharp.pixelplumbing.com/)
 [![npm](https://img.shields.io/npm/v/docu-deskew?color=cb0000)](https://www.npmjs.com/package/docu-deskew)

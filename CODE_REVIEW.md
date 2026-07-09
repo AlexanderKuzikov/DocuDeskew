@@ -3,8 +3,8 @@
 > **Дата:** 2026-07-09
 > **Ревизор:** DeepSeek v4 Pro (via OpenCode Go)
 > **Репозиторий:** [AlexanderKuzikov/DocuDeskew](https://github.com/AlexanderKuzikov/DocuDeskew)
-> **Последний коммит:** `68a986b` — Simplify contract: no resize, no cvtColor, output WebP 80
-> **Языки:** TypeScript (6.0.3), Node.js (≥20)
+> **Последний коммит:** `f943156` — fix: downgrade @types/node to 24 (LTS)
+> **Языки:** TypeScript 6.0.3, Node.js (≥20, LTS Krypton 24)
 > **LOC:** ~290 строк source + 106 строк тестов
 
 ---

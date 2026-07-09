@@ -297,7 +297,14 @@ node -e "const { deskew } = require('./dist/index.cjs'); console.log(typeof desk
 - Обновлён `BUG_REPORT.md` (10 пунктов: 2 P0, 4 P1, 4 P2).
 - Обновлён `CONTEXT.md` — дневник, статус.
 - Обновлён `README.md` — бэджи, профессиональное оформление.
-- **Коммит:** текущий.
+- **Коммит:** `2f88172`.
+
+**Сессия 4:** Обновление зависимостей до latest stable.
+- TypeScript 5.9.3 → 6.0.3, sharp 0.34.5 → 0.35.3, vitest 4.1.9 → 4.1.10.
+- `@types/node` оставлен на 24 (LTS Krypton) — Node 26 ещё не LTS.
+- `sharp.Metadata` заменён на локальный `ImageMetadata` (sharp 0.35 изменил экспорт типов).
+- `tsconfig.json` + `ignoreDeprecations: "6.0"` (TS 6.0 deprecation совместимость).
+- **Коммиты:** `439ca7b`, `f943156`.
 
 ---
 
