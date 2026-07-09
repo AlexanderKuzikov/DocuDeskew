@@ -4,7 +4,7 @@
 > **Ревизор:** DeepSeek v4 Pro (via OpenCode Go)
 > **Репозиторий:** [AlexanderKuzikov/DocuDeskew](https://github.com/AlexanderKuzikov/DocuDeskew)
 > **Последний коммит:** `68a986b` — Simplify contract: no resize, no cvtColor, output WebP 80
-> **Языки:** TypeScript (5.9.3), Node.js (≥20)
+> **Языки:** TypeScript (6.0.3), Node.js (≥20)
 > **LOC:** ~290 строк source + 106 строк тестов
 
 ---

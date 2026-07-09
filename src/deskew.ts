@@ -9,6 +9,12 @@ import type {
 } from './types.js';
 import { estimateAngle } from './pipeline.js';
 
+interface ImageMetadata {
+  format?: string;
+  width?: number;
+  height?: number;
+}
+
 const DEFAULT_OPTIONS: NormalizedOptions = {
   cannyLow: 50,
   cannyHigh: 150,
@@ -130,12 +136,12 @@ function validateInteger(value: number, name: string, min: number, max: number):
   validateNumber(value, name, min, max, true);
 }
 
-async function validateAndGetMetadata(imageBuffer: Buffer, options: NormalizedOptions): Promise<sharp.Metadata> {
+async function validateAndGetMetadata(imageBuffer: Buffer, options: NormalizedOptions): Promise<ImageMetadata> {
   if (!Buffer.isBuffer(imageBuffer) || imageBuffer.length === 0) {
     throw createDeskewError('INVALID_BUFFER', 'imageBuffer must be a non-empty Buffer');
   }
 
-  let metadata: sharp.Metadata;
+  let metadata: ImageMetadata;
   try {
     metadata = await sharp(imageBuffer, { failOn: 'none' }).metadata();
   } catch {

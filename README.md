@@ -1,9 +1,9 @@
 # DocuDeskew
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-green?logo=node.js)](https://nodejs.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-5.0-red?logo=opencv)](https://opencv.org/)
-[![Sharp](https://img.shields.io/badge/Sharp-libvips-99cc33?logo=sharp)](https://sharp.pixelplumbing.com/)
+[![Sharp](https://img.shields.io/badge/Sharp-0.35-99cc33?logo=sharp)](https://sharp.pixelplumbing.com/)
 [![npm](https://img.shields.io/npm/v/docu-deskew?color=cb0000)](https://www.npmjs.com/package/docu-deskew)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -97,7 +97,7 @@ if (result.status === 'ok') {
 
 | Компонент | Технология | Назначение |
 |-----------|------------|------------|
-| **Язык** | TypeScript 5.9 | Static typing, discriminated unions |
+| **Язык** | TypeScript 6.0 | Static typing, discriminated unions |
 | **Runtime** | Node.js ≥20 | ESM + CJS |
 | **CV** | OpenCV 5.0 (WASM) | Canny, findContours, minAreaRect |
 | **Изображения** | Sharp (libvips) | Rotate, trim, WebP encode |
