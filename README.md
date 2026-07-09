@@ -115,6 +115,18 @@ npm test             # vitest run
 npm run build        # tsup → dist/
 ```
 
+### Тестирование на файлах
+
+```bash
+# Один файл:
+node deskew.mjs input.webp output.webp
+
+# Пакетная обработка (in/ → out/ + report.txt):
+mkdir in
+# копируешь файлы в in/
+node batch.mjs
+```
+
 ---
 
 ## Ограничения
@@ -123,7 +135,7 @@ npm run build        # tsup → dist/
 - Выход: WebP 80
 - Белый фон документа
 - Угол: –45°…+45°
-- Без CLI
+- CLI: `deskew.mjs` (1 файл), `batch.mjs` (пакетно in/ → out/)
 - `confidence` — эвристическая метрика (нужна калибровка на реальных данных)
 
 ---

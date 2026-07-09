@@ -306,6 +306,17 @@ node -e "const { deskew } = require('./dist/index.cjs'); console.log(typeof desk
 - `tsconfig.json` + `ignoreDeprecations: "6.0"` (TS 6.0 deprecation совместимость).
 - **Коммиты:** `439ca7b`, `f943156`.
 
+**Сессия 5:** Исправление кросс-рантайм импорта OpenCV.
+- `import()` в vitest возвращает Module-обёртку с `.then`, что ломает `Promise`.
+- Переход на `createRequire` с ESM/CJS-фолбэком.
+- Добавлен `deskew.mjs` — CLI для одного файла.
+- **Коммит:** `112c066`.
+
+**Сессия 6:** Batch-процессор и актуализация документации.
+- `batch.mjs` — пакетная обработка: in/ → out/ + report.txt.
+- Обновлены CODE_REVIEW.md, BUG_REPORT.md, README.md, CONTEXT.md.
+- **Коммиты:** `2346db3`, `535cb6b`, текущий.
+
 ---
 
 ## Архитектурные решения
