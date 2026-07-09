@@ -6,7 +6,7 @@ let _initPromise: Promise<CV> | null = null;
 
 /**
  * Возвращает инициализированный экземпляр OpenCV.
- * Инициализация происходит один раз при первом вызове.
+ * Использует createRequire для совместимости с ESM, CJS и vitest.
  */
 export async function getCV(): Promise<CV> {
   if (_cv !== null) {
@@ -15,12 +15,28 @@ export async function getCV(): Promise<CV> {
 
   if (_initPromise === null) {
     _initPromise = (async () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const cvModule = require('@techstark/opencv-js');
-      // cvModule is a Promise<CV> — WASM loads asynchronously
-      const cv: CV = await cvModule;
-      _cv = cv;
-      return cv;
+      // createRequire надёжнее import() — не ломается в vitest/Vite.
+      // В CJS-сборке tsup заменяет import('module') на require('module'),
+      // но import.meta.url остаётся пустым. Поэтому:
+      const { createRequire } = await import('module');
+
+      // __filename доступен в CJS; import.meta.url — в ESM.
+      // tsup при CJS-сборке оставляет import.meta.url пустым,
+      // но require('url').pathToFileURL(__filename) работает.
+      let fileUrl: string;
+      try {
+        // ESM путь (включая vitest)
+        fileUrl = import.meta.url;
+      } catch {
+        // CJS fallback
+        fileUrl = String(require('url').pathToFileURL(require('path').resolve(__filename)));
+      }
+
+      const req = createRequire(fileUrl);
+      const cvPromise = req('@techstark/opencv-js');
+      // cvPromise — Promise<CV>, ждём загрузки WASM
+      _cv = await cvPromise;
+      return _cv;
     })();
   }
 
