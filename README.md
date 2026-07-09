@@ -1,198 +1,143 @@
 # DocuDeskew
 
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-green?logo=node.js)](https://nodejs.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-5.0-red?logo=opencv)](https://opencv.org/)
+[![Sharp](https://img.shields.io/badge/Sharp-libvips-99cc33?logo=sharp)](https://sharp.pixelplumbing.com/)
+[![npm](https://img.shields.io/npm/v/docu-deskew?color=cb0000)](https://www.npmjs.com/package/docu-deskew)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Устранение перекоса сканированных документов (deskew).  
-Часть проекта **DocuMind** — интеллектуальной обработки юридических документов.
+Часть платформы **[DocuMind](https://github.com/AlexanderKuzikov)** — интеллектуальной обработки юридических документов.
 
-## Текущий статус
+---
 
-```text
-Переход с sharp-based MVP на OpenCV (@techstark/opencv-js)
-```
-
-Активная разработка. Пайплайн: Canny → findContours → minAreaRect через OpenCV WASM.
-
-## Что делает
-
-`DocuDeskew` принимает `Buffer` с уже подготовленным изображением (grayscale, ≤1536px по большей стороне) и возвращает выровненный grayscale WebP 80.
-
-Диапазон углов: **–45°…+45°**. Повороты с шагом 90° — следующий модуль `DocuOrient`.
-
-**Контракт модуля:**
-- Вход: grayscale WebP/PNG/JPEG, уже уменьшенный до VLM-окна (≤1536px). Ресайз и grayscale-конвертация — ответственность upstream.
-- Выход: grayscale WebP 80, тот же размер минус trim-обрезка.
-
-## Стек
-
-| Компонент | Технология |
-|-----------|------------|
-| Язык | TypeScript |
-| Runtime | Node.js ≥20 |
-| Computer Vision | `@techstark/opencv-js` (OpenCV 5.0, WASM) |
-| Обработка изображений | `sharp` (libvips) — rotate, trim, resize |
-| Тесты | Vitest |
-| Сборка | tsup (CJS + ESM) |
-
-## Установка
+## Быстрый старт
 
 ```bash
 npm install docu-deskew
 ```
 
-Для разработки:
+```ts
+import { deskew } from 'docu-deskew';
+import { readFileSync, writeFileSync } from 'fs';
 
-```bash
-npm install
-npm run build
-npm test
-npm run typecheck
+const input = readFileSync('scan.webp');
+const result = await deskew(input);
+
+if (result.status === 'ok') {
+  console.log(`Угол: ${result.angle.toFixed(2)}°`);
+  console.log(`Уверенность: ${(result.confidence * 100).toFixed(0)}%`);
+  writeFileSync('straight.webp', result.deskewedImage);
+}
 ```
+
+---
+
+## Что делает
+
+Устраняет перекос (–45°…+45°) сканированных документов на белом фоне. Повороты с шагом 90° — следующий модуль DocuOrient.
+
+**Контракт:**
+- **Вход:** grayscale WebP/PNG/JPEG, ≤1536 px (подготовка — upstream)
+- **Выход:** grayscale WebP 80, тот же размер минус обрезка фона
+
+---
 
 ## API
 
-### ESM
+### `deskew(imageBuffer, options?)`
 
-```ts
-import { deskew } from 'docu-deskew';
+Возвращает `DeskewResult` — discriminated union:
 
-const result = await deskew(imageBuffer, options?);
-```
+| Статус | `angle` | `deskewedImage` | Когда |
+|--------|---------|-----------------|-------|
+| `ok` | Корректирующий угол | WebP-буфер | Успешное выравнивание |
+| `low_confidence` | Оценка угла | `null` + `reason` | Контур найден, но уверенность ниже порога |
+| `no_document` | `0` | `null` + `reason` | Контур не найден |
+| `unsupported_case` | `0` | `null` + `reason` | Зарезервирован |
 
-### CJS
+Ошибки — `DeskewError` с полем `code`:
+`INVALID_BUFFER` | `INVALID_IMAGE` | `IMAGE_TOO_LARGE` | `INVALID_OPTIONS` | `PROCESSING_ERROR`
 
-```js
-const { deskew } = require('docu-deskew');
-
-const result = await deskew(imageBuffer, options?);
-```
-
-## Результат
-
-### `ok`
-
-```ts
-{
-  status: 'ok',
-  angle: number,
-  confidence: number,
-  orientation: 'portrait' | 'landscape',
-  deskewedImage: Buffer
-}
-```
-
-### `low_confidence`
-
-```ts
-{
-  status: 'low_confidence',
-  angle: number,
-  confidence: number,
-  orientation?: 'portrait' | 'landscape',
-  deskewedImage: null,
-  reason: string
-}
-```
-
-### `no_document`
-
-```ts
-{
-  status: 'no_document',
-  angle: 0,
-  confidence: number,
-  orientation: null,
-  deskewedImage: null,
-  reason: string
-}
-```
-
-### `unsupported_case`
-
-Зарезервирован для случаев, которые нельзя безопасно обработать текущим алгоритмом. Пока не реализован.
-
-## Параметры options
+### Опции
 
 | Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
+|----------|-----|-------------|----------|
 | `cannyLow` | `number` | `50` | Нижний порог Canny |
 | `cannyHigh` | `number` | `150` | Верхний порог Canny |
-| `minContourAreaRatio` | `number` | `0.05` | Минимальная доля площади контура от изображения |
-| `padding` | `number` | `10` | Отступ после trim, px |
+| `minContourAreaRatio` | `number` | `0.05` | Минимальная доля контура от площади |
+| `padding` | `number` | `10` | Отступ после обрезки фона, px |
 | `trimThreshold` | `number` | `10` | Порог обрезки белого фона |
-| `minConfidence` | `number` | `0.75` | Минимальная уверенность для статуса `ok` |
-| `maxPixels` | `number` | `50000000` | Лимит пикселей |
-| `docType` | `string` | — | Тип документа (для будущей совместимости) |
+| `minConfidence` | `number` | `0.75` | Порог для статуса `ok` |
+| `maxPixels` | `number` | `50 000 000` | Лимит пикселей |
+| `docType` | `string` | — | Тип документа (для совместимости) |
 
-## Ошибки
-
-API бросает `Error` с полем `code`:
-
-| Код | Когда |
-|-----|-------|
-| `INVALID_BUFFER` | Пустой буфер или передан не `Buffer` |
-| `INVALID_IMAGE` | Нечитаемое изображение или неподдерживаемый формат |
-| `IMAGE_TOO_LARGE` | Превышен `maxPixels` |
-| `INVALID_OPTIONS` | Некорректные `options` |
-| `PROCESSING_ERROR` | Внутренняя ошибка обработки |
+---
 
 ## Алгоритм
 
-1. Валидация входа: Buffer, формат PNG/JPEG/WebP, ≤ maxPixels.
-2. Чтение grayscale raw через `sharp.raw()` → `cv.Mat` (без копирования).
-3. `GaussianBlur(5×5)`.
-4. `Canny(low=50, high=150)`.
-5. `findContours` → самый большой контур >5% площади.
-6. `minAreaRect` → угол поворота.
-7. Если контур не найден → `no_document`.
-8. Если confidence < порога → `low_confidence`.
-9. Поворот через `sharp.rotate(angle)` на исходном буфере.
-10. `trim` + `padding`.
-11. Возврат grayscale WebP 80.
-
-**Важно:** ресайз и grayscale-конвертация выполняются upstream-модулем, НЕ внутри DocuDeskew.
-
-## Пример использования
-
-```js
-const fs = require('fs');
-const { deskew } = require('docu-deskew');
-
-(async () => {
-  const input = fs.readFileSync('scan.png');
-  const result = await deskew(input);
-
-  if (result.status !== 'ok') {
-    throw new Error(result.reason ?? result.status);
-  }
-
-  console.log(`Корректирующий угол: ${result.angle.toFixed(2)}°`);
-  console.log(`Уверенность: ${result.confidence.toFixed(3)}`);
-  fs.writeFileSync('straight.png', result.deskewedImage);
-})();
+```text
+Входной буфер (grayscale, ≤1536px)
+  → Валидация (Buffer, формат, maxPixels)
+  → sharp.raw() → cv.Mat (0 копий)
+  → GaussianBlur(5×5)
+  → Canny(50, 150)
+  → findContours(RETR_EXTERNAL)
+  → filter: самый большой контур >5% площади
+  → minAreaRect → угол
+  → sharp.rotate(angle) на исходном буфере
+  → trim + padding
+  → grayscale WebP 80
 ```
 
-## Проверки
+---
+
+## Стек
+
+| Компонент | Технология | Назначение |
+|-----------|------------|------------|
+| **Язык** | TypeScript 5.9 | Static typing, discriminated unions |
+| **Runtime** | Node.js ≥20 | ESM + CJS |
+| **CV** | OpenCV 5.0 (WASM) | Canny, findContours, minAreaRect |
+| **Изображения** | Sharp (libvips) | Rotate, trim, WebP encode |
+| **Тесты** | Vitest | 8 unit-тестов, синтетические fixtures |
+| **Сборка** | tsup | CJS + ESM + .d.ts |
+
+---
+
+## Разработка
 
 ```bash
-npm run typecheck
-npm test
-npm run build
+npm install
+npm run typecheck    # tsc --noEmit
+npm test             # vitest run
+npm run build        # tsup → dist/
 ```
+
+---
 
 ## Ограничения
 
-- Вход: PNG/JPEG/WebP, уже grayscale и ≤1536px по большей стороне.
-- Выход: grayscale WebP 80.
-- Документ на белом фоне.
-- Угол: –45°…+45°.
-- Нет CLI.
-- Нет golden set на реальных сканах.
-- `confidence` — эвристическая оценка.
+- Вход: WebP/PNG/JPEG, уже grayscale и ≤1536 px
+- Выход: WebP 80
+- Белый фон документа
+- Угол: –45°…+45°
+- Без CLI
+- `confidence` — эвристическая метрика (нужна калибровка на реальных данных)
+
+---
 
 ## Связь с DocuMind
 
-DocuDeskew — модуль конвейера DocuMind. После выравнивания документ передаётся в `DocuOrient` для доворота до читаемой ориентации.
+DocuDeskew — первый модуль конвейера обработки:
+1. **DocuDeskew** (этот модуль) — выравнивание перекоса
+2. **DocuOrient** — ориентация 0°/90°/180°/270°
+3. VLM-распознавание (Qwen 3.6 35B A3B)
 
-Обработка реальных юридических документов с персональными данными должна выполняться локально/on-prem.
+Все операции с персональными данными выполняются локально/on-prem.
+
+---
 
 ## Лицензия
 

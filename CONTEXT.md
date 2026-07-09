@@ -16,10 +16,13 @@ https://github.com/AlexanderKuzikov/DocuDeskew
 Текущий статус:
 
 ```text
-Переход с sharp-based MVP на OpenCV (@techstark/opencv-js)
+OpenCV-версия: Canny → findContours → minAreaRect.
+Всё проходит: typecheck, 8 тестов, CJS+ESM сборка.
+Готов к интеграции в конвейер DocuMind как deskew-модуль.
 ```
 
-Старый sharp-прототип выброшен — см. секцию «Legacy» в конце файла.
+Следующие шаги: golden fixtures (P0), калибровка confidence (P0), CLI (P1).
+Подробнее: [CODE_REVIEW.md](./CODE_REVIEW.md), [BUG_REPORT.md](./BUG_REPORT.md).
 
 ---
 
@@ -252,11 +255,57 @@ node -e "const { deskew } = require('./dist/index.cjs'); console.log(typeof desk
 
 ---
 
+## Дневник разработки
+
+### 2026-06-20 — Начало: SRS и sharp-based MVP
+
+Пользователь создал [репозиторий](https://github.com/AlexanderKuzikov/DocuDeskew) и SRS2.md.
+Реализован MVP на чистом sharp: ручной Sobel → morphology → convex hull → minAreaRect → rotate.
+502 строки в `src/deskew.ts`, 8 синтетических тестов, CJS/ESM сборка.
+Найдена и исправлена ошибка erosion (перепутана с инвертированной дилатацией).
+Добавлены README, CONTEXT, BUG_REPORT.
+
+**Коммиты:** `0164ee6` (SRS2), `7be2968` (MVP), `47d136d` (fix erosion + docs).
+
+### 2026-06-28 — Архитектурное проектирование (5 docs-коммитов)
+
+Пользователь через GitHub добавил архитектурные решения в CONTEXT.md:
+- Переход на `@techstark/opencv-js` (WASM, zero native deps)
+- Целевой пайплайн: downscale → Otsu → morphology → findContours → approxPolyDP → warpPerspective
+- Обсуждение ориентации (VLM / Tesseract OSD / Template)
+
+**Коммиты:** `8db220d`, `9000bb8`, `b53fffa`, `5e7ff08`, `60cf858`.
+
+### 2026-07-09 — Полный переход на OpenCV
+
+**Сессия 1 (утро):** Полный rewrite на OpenCV.
+- Удалён sharp-based код (ручной Sobel, morphology, convexHull, minAreaRect).
+- Новые файлы: `src/cv.ts` (синглтон WASM), `src/pipeline.ts` (Canny → findContours → minAreaRect).
+- 8/8 тестов проходят с первого раза. Typecheck чистый. CJS/ESM сборка.
+- **Коммит:** `c700c35`.
+
+**Сессия 2 (вечер):** Упрощение контракта.
+- Убран ресайз (`createWorkCopy`) — ответственность upstream.
+- Убран `cvtColor(RGB2GRAY)` — вход уже grayscale.
+- Убран параметр `workSize`.
+- Выходной формат: WebP 80 (вместо PNG).
+- Причина: экономия ~30% токенов на VLM-прогонах, совместимость с PDF через конвертацию.
+- **Коммит:** `68a986b`.
+
+**Сессия 3 (ночь):** Документация и code review.
+- Полный Code Review → `CODE_REVIEW.md` (оценка 8.1/10).
+- Обновлён `BUG_REPORT.md` (10 пунктов: 2 P0, 4 P1, 4 P2).
+- Обновлён `CONTEXT.md` — дневник, статус.
+- Обновлён `README.md` — бэджи, профессиональное оформление.
+- **Коммит:** текущий.
+
+---
+
 ## Архитектурные решения
 
-### 2026-07-09 — Переход на OpenCV Canny-based пайплайн
+### 2026-07-09 — Упрощение контракта: без ресайза, без cvtColor, WebP 80
 
-**Статус:** Реализуется
+**Статус:** Реализовано (коммиты `c700c35`, `68a986b`)
 
 **Решение:** заменить ручной sharp-based пайплайн (свой Sobel, morphology, convexHull, minAreaRect) на нативный OpenCV через `@techstark/opencv-js`.
 
@@ -288,7 +337,7 @@ node -e "const { deskew } = require('./dist/index.cjs'); console.log(typeof desk
 
 ### 2026-06-28 — Выбор: `@techstark/opencv-js`
 
-**Статус:** Принято, реализуется с 2026-07-09.
+**Статус:** Реализовано (коммит `c700c35`).
 
 #### Обоснование
 
