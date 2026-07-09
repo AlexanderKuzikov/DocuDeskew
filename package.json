@@ -1,7 +1,7 @@
 {
   "name": "docu-deskew",
   "version": "0.1.0",
-  "description": "Deskew scanned document images with sharp.",
+  "description": "Deskew scanned document images with OpenCV.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -25,13 +25,15 @@
     "deskew",
     "document",
     "scan",
-    "sharp"
+    "opencv",
+    "canny"
   ],
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@techstark/opencv-js": "^5.0.0-release.1",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
