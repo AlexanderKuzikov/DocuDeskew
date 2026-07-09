@@ -14,7 +14,7 @@
 | Б-3 | `src/deskew.ts:165` | 🟡 Открыт | P1 | Двойной WebP encode/decode в rotateTrimAndPad |
 | Б-4 | `src/types.ts:74` | 🟡 Открыт | P1 | `unsupported_case` в типах, но не в коде |
 | Б-5 | `test/deskew.test.ts:30` | 🟡 Открыт | P1 | Нет теста на WebP-вход |
-| Б-6 | `package.json` | 🟡 Открыт | P1 | CLI отсутствует |
+| Б-6 | `package.json`, `deskew.mjs`, `batch.mjs` | 🟡 Частично | P1 | CLI: deskew.mjs (1 файл), batch.mjs (in/ → out/). Нет bin. |
 | Б-7 | `src/cv.ts:1` | 🟢 Открыт | P2 | `CV = any` вместо минимального интерфейса |
 | Б-8 | `src/pipeline.ts:59` | 🟢 Открыт | P2 | Два прохода по контурам вместо одного |
 | Б-9 | `src/pipeline.ts:166` | 🟢 Открыт | P2 | `detectOrientation` дублируется |
@@ -113,3 +113,5 @@
 | 2026-06-20 | Первое ревью sharp-based MVP (8 багов) |
 | 2026-07-09 | Sharp-based MVP выброшен, переход на OpenCV |
 | 2026-07-09 | Второе ревью: новый BUG_REPORT для OpenCV-версии |
+| 2026-07-09 | ✅ Исправлен кросс-рантайм импорт OpenCV (ESM + CJS + vitest) |
+| 2026-07-09 | 🟡 Частично: CLI — добавлены deskew.mjs и batch.mjs |

@@ -3,8 +3,8 @@
 > **Дата:** 2026-07-09
 > **Ревизор:** DeepSeek v4 Pro (via OpenCode Go)
 > **Репозиторий:** [AlexanderKuzikov/DocuDeskew](https://github.com/AlexanderKuzikov/DocuDeskew)
-> **Последний коммит:** `f943156` — fix: downgrade @types/node to 24 (LTS)
-> **Языки:** TypeScript 6.0.3, Node.js (≥20, LTS Krypton 24)
+> **Последний коммит:** `2346db3` — Add batch.mjs
+> **Языки:** TypeScript 6.0.3, Node.js (LTS Krypton 24)
 > **LOC:** ~290 строк source + 106 строк тестов
 
 ---
@@ -80,19 +80,11 @@ return sharp(buffer)
 **Проблема:** `createSkewedDocument` всегда выдаёт PNG. Контракт модуля говорит «WebP/PNG/JPEG», но WebP-вход не тестируется.
 **Рекомендация:** Добавить тест с `.webp({ quality: 80 })` вместо `.png()`.
 
-### P1-4. CLI отсутствует
-**Файл:** `package.json` (нет `bin` поля)  
-**Проблема:** Нет способа прогнать deskew из терминала: `docu-deskew input.webp output.webp`. Для отладки на golden fixtures критично.
-**Рекомендация:** Минимальный CLI на 20 строк:
-```ts
-#!/usr/bin/env node
-import { readFileSync, writeFileSync } from 'fs';
-import { deskew } from './index.js';
-const [,, input, output] = process.argv;
-const result = await deskew(readFileSync(input));
-if (result.status === 'ok') writeFileSync(output, result.deskewedImage);
-else { console.error(result.status, result.reason); process.exit(1); }
-```
+### P1-4. CLI отсутствует — частично решено
+**Файл:** `package.json` (нет `bin` поля), `deskew.mjs`, `batch.mjs`  
+**Проблема:** Нет `docu-deskew` команды в PATH.  
+**Частичное решение:** `deskew.mjs` (один файл), `batch.mjs` (папка in/ → out/).
+Осталось: добавить `bin` в package.json для `npm install -g`.
 
 ---
 
